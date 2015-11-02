@@ -129,7 +129,7 @@ def center_data(X, y, fit_intercept, normalize=False, copy=True,
             X -= X_mean
             if normalize:
                 # XXX: currently scaled to variance=n_samples
-                X_std = np.sqrt(np.sum(X ** 2, axis=0))
+                X_std = np.sqrt(np.sum(np.abs(X) ** 2, axis=0))
                 X_std[X_std == 0] = 1
                 X /= X_std
             else:

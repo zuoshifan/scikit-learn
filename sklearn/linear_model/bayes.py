@@ -134,7 +134,7 @@ class BayesianRidge(LinearModel, RegressorMixin):
         -------
         self : returns an instance of self.
         """
-        X, y = check_X_y(X, y, dtype=np.float64, y_numeric=True)
+        X, y = check_X_y(X, y, dtype=np.promote_types(X.dtype, y.dtype).type, y_numeric=True)
         X, y, X_mean, y_mean, X_std = self._center_data(
             X, y, self.fit_intercept, self.normalize, self.copy_X)
         n_samples, n_features = X.shape
@@ -152,7 +152,7 @@ class BayesianRidge(LinearModel, RegressorMixin):
         self.scores_ = list()
         coef_old_ = None
 
-        XT_y = np.dot(X.T, y)
+        XT_y = np.dot(X.T.conj(), y)
         U, S, Vh = linalg.svd(X, full_matrices=False)
         eigen_vals_ = S ** 2
 
@@ -163,15 +163,15 @@ class BayesianRidge(LinearModel, RegressorMixin):
             # sigma_ = lambda_ / alpha_ * np.eye(n_features) + np.dot(X.T, X)
             # coef_ = sigma_^-1 * XT * y
             if n_samples > n_features:
-                coef_ = np.dot(Vh.T,
+                coef_ = np.dot(Vh.T.conj(),
                                Vh / (eigen_vals_ + lambda_ / alpha_)[:, None])
                 coef_ = np.dot(coef_, XT_y)
                 if self.compute_score:
                     logdet_sigma_ = - np.sum(
                         np.log(lambda_ + alpha_ * eigen_vals_))
             else:
-                coef_ = np.dot(X.T, np.dot(
-                    U / (eigen_vals_ + lambda_ / alpha_)[None, :], U.T))
+                coef_ = np.dot(X.T.conj(), np.dot(
+                    U / (eigen_vals_ + lambda_ / alpha_)[None, :], U.T.conj()))
                 coef_ = np.dot(coef_, y)
                 if self.compute_score:
                     logdet_sigma_ = lambda_ * np.ones(n_features)
@@ -179,11 +179,11 @@ class BayesianRidge(LinearModel, RegressorMixin):
                     logdet_sigma_ = - np.sum(np.log(logdet_sigma_))
 
             ### Update alpha and lambda
-            rmse_ = np.sum((y - np.dot(X, coef_)) ** 2)
+            rmse_ = np.sum(np.abs(y - np.dot(X, coef_)) ** 2)
             gamma_ = (np.sum((alpha_ * eigen_vals_)
                       / (lambda_ + alpha_ * eigen_vals_)))
             lambda_ = ((gamma_ + 2 * lambda_1)
-                       / (np.sum(coef_ ** 2) + 2 * lambda_2))
+                       / (np.sum(np.abs(coef_) ** 2) + 2 * lambda_2))
             alpha_ = ((n_samples - gamma_ + 2 * alpha_1)
                       / (rmse_ + 2 * alpha_2))
 
@@ -194,7 +194,7 @@ class BayesianRidge(LinearModel, RegressorMixin):
                 s += 0.5 * (n_features * log(lambda_)
                             + n_samples * log(alpha_)
                             - alpha_ * rmse_
-                            - (lambda_ * np.sum(coef_ ** 2))
+                            - (lambda_ * np.sum(np.abs(coef_) ** 2))
                             - logdet_sigma_
                             - n_samples * log(2 * np.pi))
                 self.scores_.append(s)

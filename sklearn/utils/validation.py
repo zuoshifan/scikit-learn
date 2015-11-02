@@ -102,7 +102,7 @@ def as_float_array(X, copy=True, force_all_finite=True):
                            ensure_2d=False)
     elif sp.issparse(X) and X.dtype in [np.float32, np.float64]:
         return X.copy() if copy else X
-    elif X.dtype in [np.float32, np.float64]:  # is numpy array
+    elif X.dtype in [np.float32, np.float64, np.complex64, np.complex128]:  # is numpy array
         return X.copy('F' if X.flags['F_CONTIGUOUS'] else 'C') if copy else X
     else:
         return X.astype(np.float32 if X.dtype == np.int32 else np.float64)
