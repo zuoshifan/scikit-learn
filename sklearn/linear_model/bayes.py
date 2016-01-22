@@ -6,6 +6,7 @@ from __future__ import print_function
 # Authors: V. Michel, F. Pedregosa, A. Gramfort
 # License: BSD 3 clause
 
+import warnings
 from math import log
 import numpy as np
 from scipy import linalg
@@ -138,9 +139,9 @@ class BayesianRidge(LinearModel, RegressorMixin):
         X, y, X_mean, y_mean, X_std = self._center_data(
             X, y, self.fit_intercept, self.normalize, self.copy_X)
         n_samples, n_features = X.shape
+        coef_ = np.zeros(n_features)
 
         ### Initialization of the values of the parameters
-        alpha_ = 1. / np.var(y)
         lambda_ = 1.
 
         verbose = self.verbose
@@ -151,6 +152,21 @@ class BayesianRidge(LinearModel, RegressorMixin):
 
         self.scores_ = list()
         coef_old_ = None
+
+        # If y is a zero vector, return a zero vector as coef_
+        with warnings.catch_warnings():
+            warnings.filterwarnings('error')
+            try:
+                alpha_ = 1. / np.var(y)
+            except RuntimeWarning:
+                alpha_ = np.Inf
+
+                self.coef_ = coef_
+                self.alpha_ = alpha_
+                self.lambda_ = lambda_
+                self._set_intercept(X_mean, y_mean, X_std)
+                return self
+
 
         XT_y = np.dot(X.T.conj(), y)
         U, S, Vh = linalg.svd(X, full_matrices=False)
